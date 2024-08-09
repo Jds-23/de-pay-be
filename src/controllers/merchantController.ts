@@ -1,20 +1,11 @@
 // src/controllers/merchantController.ts
 import { Request, Response } from 'express';
-import { Merchant } from '../entity/Merchant';
-import { z } from 'zod';
-import { TokenSchema } from '../type/token';
-import { MetadataSchema } from '../type/profile';
-import { MerchantHandler } from '../handlers/MerchantHandler';
+import { MerchantHandler } from '../handlers/merchant/handler';
+import { createMerchantSchema } from '../handlers/merchant/schema';
+import { CustomerHandler } from '../handlers/customer/handler';
 
 const merchantHandler = new MerchantHandler();
-
-// Define the Zod schema for Merchant creation
-const createMerchantSchema = z.object({
-    id: z.string(),
-    walletAddress: z.string(),
-    baseToken: TokenSchema,
-    metadata: MetadataSchema,
-});
+const customerHandler = new CustomerHandler();
 
 // Creates a Merchant
 export const createMerchant = async (req: Request, res: Response) => {
@@ -23,18 +14,9 @@ export const createMerchant = async (req: Request, res: Response) => {
         if (!parseResult.success) {
             return res.status(400).json({ error: parseResult.error.errors });
         }
-
-        const { id, baseToken, metadata, walletAddress } = parseResult.data;
-
-        const merchant = new Merchant();
-        merchant.id = id;
-        merchant.baseToken = baseToken;
-        merchant.metadata = metadata;
-        merchant.walletAddress = walletAddress;
-        merchant.offerings = [];
-
-        await merchantHandler.addMerchant(merchant);
-        res.status(201).json({ insertedId: id });
+        await merchantHandler.createMerchant(parseResult.data);
+        await customerHandler.createCustomer({ id: parseResult.data.id, walletAddress: parseResult.data.walletAddress });
+        res.status(201).json({ insertedId: parseResult.data.id });
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ error: error?.message || 'Failed to create merchant' });
@@ -67,25 +49,25 @@ export const getMerchants = async (req: Request, res: Response) => {
     }
 };
 
-// Update a Merchant
-export const updateMerchant = async (req: Request, res: Response) => {
-    const id = req.params.id;
-    try {
-        const merchant = await merchantHandler.getMerchant(id);
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            merchant.baseToken = req.body.baseToken;
-            merchant.metadata = req.body.metadata;
-            merchant.walletAddress = req.body.walletAddress;
-            const updatedMerchant = await merchantHandler.updateMerchant(merchant);
-            res.json(updatedMerchant);
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to update merchant' });
-    }
-};
+// // Update a Merchant
+// export const updateMerchant = async (req: Request, res: Response) => {
+//     const id = req.params.id;
+//     try {
+//         const merchant = await merchantHandler.getMerchant(id);
+//         if (!merchant) {
+//             res.status(404).json({ error: 'Merchant not found' });
+//         } else {
+//             merchant.baseToken = req.body.baseToken;
+//             merchant.metadata = req.body.metadata;
+//             merchant.walletAddress = req.body.walletAddress;
+//             const updatedMerchant = await merchantHandler.updateMerchant(merchant);
+//             res.json(updatedMerchant);
+//         }
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'Failed to update merchant' });
+//     }
+// };
 
 // Delete a Merchant
 export const deleteMerchant = async (req: Request, res: Response) => {

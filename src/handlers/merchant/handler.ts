@@ -1,7 +1,8 @@
 // src/handlers/MerchantHandler.ts
 import { Repository } from 'typeorm';
-import { Merchant } from '../entity/Merchant';
-import { AppDataSource } from '../data-source';
+import { Merchant } from '../../entity/Merchant';
+import { AppDataSource } from '../../data-source';
+import { CreateMerchantType } from './schema';
 
 export class MerchantHandler {
     private repo: Repository<Merchant>;
@@ -14,14 +15,32 @@ export class MerchantHandler {
         return await this.repo.findOne({ where: { id }, relations: ['offerings'] });
     }
 
-    async addMerchant(merchant: Merchant) {
-        const existing = await this.repo.findOne({ where: { id: merchant.id } });
-        if (!existing) {
-            return await this.repo.save(merchant);
-        } else {
-            throw new Error(`Merchant with ID ${merchant.id} already exists.`);
+    async createMerchant(createMerchantParams: CreateMerchantType) {
+        try {
+            const existing = await this.repo.findOne({ where: { id: createMerchantParams.id } });
+            if (!existing) {
+                const merchant = new Merchant();
+                merchant.id = createMerchantParams.id;
+                merchant.baseToken = createMerchantParams.baseToken;
+                merchant.metadata = createMerchantParams.metadata;
+                merchant.walletAddress = createMerchantParams.walletAddress;
+                merchant.offerings = [];
+                return await this.repo.save(merchant);
+            } else {
+                throw new Error(`Merchant with ID ${createMerchantParams.id} already exists.`);
+            }
+        } catch (error: any) {
+            throw new Error(error?.message || 'Failed to create merchant');
         }
     }
+    // async addMerchant(merchant: Merchant) {
+    //     const existing = await this.repo.findOne({ where: { id: merchant.id } });
+    //     if (!existing) {
+    //         return await this.repo.save(merchant);
+    //     } else {
+    //         throw new Error(`Merchant with ID ${merchant.id} already exists.`);
+    //     }
+    // }
 
     async updateMerchant(merchant: Merchant) {
         const existing = await this.repo.findOne({ where: { id: merchant.id } });

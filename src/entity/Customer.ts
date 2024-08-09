@@ -8,7 +8,7 @@ export class Customer {
     id!: string;
 
     @Column("json")
-    metadata!: Metadata;
+    metadata!: Metadata | null;
 
     @OneToMany(type => Invoice, invoice => invoice.customer)
     invoices!: Invoice[];

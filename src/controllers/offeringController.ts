@@ -5,20 +5,21 @@ import { z } from 'zod';
 import { MetadataSchema } from '../type/profile';
 import { TokenSchema } from '../type/token';
 import { Offering } from '../entity/Offering';
-import { MerchantHandler } from '../handlers/MerchantHandler';
+import { MerchantHandler } from '../handlers/merchantHandler';
+import { createOfferingSchema } from '../handlers/offering/schema';
 
 const offeringHandler = new OfferingHandler(); // Initialize OfferingHandler
 const merchantHandler = new MerchantHandler();
 
-const createOfferingSchema = z.object({
-    merchantId: z.string(),
-    metadata: MetadataSchema,
-    price: z.string().transform((val) => BigInt(val)),
-    customToken: TokenSchema,
-    stock: z.number(),
-    isUnlimited: z.boolean(),
-    isLive: z.boolean(),
-});
+// const createOfferingSchema = z.object({
+//     merchantId: z.string(),
+//     metadata: MetadataSchema,
+//     price: z.string().transform((val) => BigInt(val)),
+//     customToken: TokenSchema,
+//     stock: z.number(),
+//     isUnlimited: z.boolean(),
+//     isLive: z.boolean(),
+// });
 
 // Creates an Offering
 export const createOffering = async (req: Request, res: Response) => {
