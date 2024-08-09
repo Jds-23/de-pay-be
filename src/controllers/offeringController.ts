@@ -1,27 +1,10 @@
 // src/controllers/offeringController.ts
 import { Request, Response } from 'express';
-import { OfferingHandler } from '../handlers/offeringHandler'; // Import OfferingHandler
-import { z } from 'zod';
-import { MetadataSchema } from '../type/profile';
-import { TokenSchema } from '../type/token';
-import { Offering } from '../entity/Offering';
-import { MerchantHandler } from '../handlers/merchantHandler';
+import { OfferingHandler } from '../handlers/offering/handler';
 import { createOfferingSchema } from '../handlers/offering/schema';
 
-const offeringHandler = new OfferingHandler(); // Initialize OfferingHandler
-const merchantHandler = new MerchantHandler();
-
-// const createOfferingSchema = z.object({
-//     merchantId: z.string(),
-//     metadata: MetadataSchema,
-//     price: z.string().transform((val) => BigInt(val)),
-//     customToken: TokenSchema,
-//     stock: z.number(),
-//     isUnlimited: z.boolean(),
-//     isLive: z.boolean(),
-// });
-
-// Creates an Offering
+const offeringHandler = new OfferingHandler();
+// Creates a new Offering
 export const createOffering = async (req: Request, res: Response) => {
     try {
         const parseResult = createOfferingSchema.safeParse(req.body);
@@ -29,43 +12,75 @@ export const createOffering = async (req: Request, res: Response) => {
             return res.status(400).json({ error: parseResult.error.errors });
         }
 
-        const { merchantId, metadata, price, customToken, stock, isUnlimited, isLive } = parseResult.data;
-
-        // Check if the merchant exists
-        // const merchant = await offeringHandler.repo.manager.findOne('Merchant', { where: { id: merchantId } });
-        const merchant = await merchantHandler.getMerchant(merchantId);
-        if (!merchant) {
-            return res.status(404).json({ error: 'Merchant not found' });
-        }
-
-        const offering = new Offering();
-        offering.metadata = metadata;
-        offering.price = price;
-        offering.customToken = customToken;
-        offering.stock = stock;
-        offering.isUnlimited = isUnlimited;
-        offering.isLive = isLive;
-        offering.merchant = merchant;
-
-        const result = await offeringHandler.addOffering(offering);
-        res.status(201).json({ id: result.id });
-    } catch (error) {
+        const offering = await offeringHandler.createOffering(parseResult.data);
+        res.status(201).json({ id: offering.id });
+    } catch (error: any) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to create offering' });
+        res.status(500).json({ error: error?.message || 'Failed to create offering' });
     }
 };
 
-// Retrieves a single Offering by ID
+// Retrieves an Offering by ID
 export const getOfferingById = async (req: Request, res: Response) => {
     try {
-        const offeringId = parseInt(req.params.id, 10);
-        const offering = await offeringHandler.getOffering(offeringId);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ error: 'Invalid ID' });
+        }
+
+        const offering = await offeringHandler.getOffering(id);
         if (!offering) {
             return res.status(404).json({ error: 'Offering not found' });
         }
+
         res.json(offering);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to get offering' });
+        res.status(500).json({ error: error?.message || 'Failed to retrieve offering' });
+    }
+};
+
+// Retrieves all Offerings
+export const getAllOfferings = async (_req: Request, res: Response) => {
+    try {
+        const offerings = await offeringHandler.getAllOfferings();
+        res.json(offerings);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error?.message || 'Failed to retrieve offerings' });
+    }
+};
+
+// Updates an Offering's stock
+export const updateOfferingStock = async (req: Request, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { stock } = req.body;
+
+        if (isNaN(id) || typeof stock !== 'number') {
+            return res.status(400).json({ error: 'Invalid ID or stock value' });
+        }
+
+        const offering = await offeringHandler.updateOfferingStock(id, stock);
+        res.json(offering);
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error?.message || 'Failed to update offering stock' });
+    }
+};
+
+// Deletes an Offering by ID
+export const deleteOffering = async (req: Request, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ error: 'Invalid ID' });
+        }
+
+        await offeringHandler.deleteOffering(id);
+        res.status(204).send();
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error?.message || 'Failed to delete offering' });
     }
 };

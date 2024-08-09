@@ -26,7 +26,7 @@ export class InvoiceHandler {
         try {
             const invoice = await this.repo.findOne({ where: { id }, relations: ['customer', 'offering', 'payment'] });
             if (!invoice) {
-                throw new Error(`Invoice with ID 1 does not exist.`);
+                throw new Error(`Invoice with ID ${id} does not exist.`);
             }
             return invoice;
         } catch (error) {
