@@ -12,7 +12,15 @@ export class MerchantHandler {
     }
 
     async getMerchant(id: string) {
-        return await this.repo.findOne({ where: { id }, relations: ['offerings'] });
+        try {
+            const existing = await this.repo.findOne({ where: { id }, relations: ['offerings'] });
+            if (!existing) {
+                throw new Error(`Merchant with ID ${id} does not exist.`);
+            }
+            return existing;
+        } catch (error: any) {
+            throw new Error(error?.message || 'Failed to get merchant');
+        }
     }
 
     async createMerchant(createMerchantParams: CreateMerchantType) {

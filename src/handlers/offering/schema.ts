@@ -4,7 +4,7 @@ import { MetadataSchema } from "../../type/profile";
 
 // Define the Zod schema for Offering creation
 const createOfferingSchema = z.object({
-    id: z.number(),
+    id: z.number().optional(),
     price: z.string(),
     customToken: TokenSchema.optional(),
     metadata: MetadataSchema,

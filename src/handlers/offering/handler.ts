@@ -15,7 +15,12 @@ export class OfferingHandler {
 
     async getOffering(id: number) {
         try {
-            return await this.repo.findOne({ where: { id }, relations: ['merchant', 'invoices'] });
+            const offering = await this.repo.findOne({ where: { id }, relations: ['merchant', 'invoices'] });
+            if (offering) {
+                return offering;
+            } else {
+                throw new Error(`Offering with ID ${id} does not exist.`);
+            }
         } catch (error) {
             console.error("Error while getting Offering:", error);
             throw error;
@@ -24,15 +29,11 @@ export class OfferingHandler {
 
     async createOffering(createOfferingParams: CreateOfferingType) {
         try {
-            const existing = await this.repo.findOne({ where: { id: createOfferingParams.id } });
+            const existing = createOfferingParams.id ? await this.repo.findOne({ where: { id: createOfferingParams.id } }) : null;
             if (!existing) {
                 const merchant = await this.merchantHandler.getMerchant(createOfferingParams.merchantId);
-                if (!merchant) {
-                    throw new Error(`Merchant with ID ${createOfferingParams.merchantId} does not exist.`);
-                }
 
                 const offering = new Offering();
-                offering.id = createOfferingParams.id;
                 offering.metadata = createOfferingParams.metadata;
                 offering.price = BigInt(createOfferingParams.price);
                 offering.customToken = createOfferingParams.customToken ?? merchant.baseToken;
