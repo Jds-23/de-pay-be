@@ -1,12 +1,13 @@
 // src/controllers/merchantController.ts
 import { Request, Response } from 'express';
-import { AppDataSource } from '../data-source';
 import { Merchant } from '../entity/Merchant';
 import { z } from 'zod';
 import { TokenSchema } from '../type/token';
 import { MetadataSchema } from '../type/profile';
+import { MerchantHandler } from '../handlers/MerchantHandler';
 
-const merchantRepository = AppDataSource.getRepository(Merchant);
+const merchantHandler = new MerchantHandler();
+
 // Define the Zod schema for Merchant creation
 const createMerchantSchema = z.object({
     id: z.string(),
@@ -14,7 +15,8 @@ const createMerchantSchema = z.object({
     baseToken: TokenSchema,
     metadata: MetadataSchema,
 });
-// creates a Merchant
+
+// Creates a Merchant
 export const createMerchant = async (req: Request, res: Response) => {
     try {
         const parseResult = createMerchantSchema.safeParse(req.body);
@@ -31,132 +33,112 @@ export const createMerchant = async (req: Request, res: Response) => {
         merchant.walletAddress = walletAddress;
         merchant.offerings = [];
 
-        const result = await merchantRepository.save(merchant);
-        res.status(201).json({ insertedId: result.id });
-    } catch (error) {
+        await merchantHandler.addMerchant(merchant);
+        res.status(201).json({ insertedId: id });
+    } catch (error: any) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to create merchant' });
+        res.status(500).json({ error: error?.message || 'Failed to create merchant' });
     }
 };
 
-// gets a Merchant
+// Gets a Merchant
 export const getMerchant = async (req: Request, res: Response) => {
-    const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id } });
+        const merchant = await merchantHandler.getMerchant(req.params.id);
         if (!merchant) {
             res.status(404).json({ error: 'Merchant not found' });
         } else {
             res.json(merchant);
         }
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchant' });
     }
 };
 
-// get all Merchants
+// Get all Merchants
 export const getMerchants = async (req: Request, res: Response) => {
     try {
-        const merchants = await merchantRepository.find();
+        const merchants = await merchantHandler.getAllMerchants();
         res.json(merchants);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchants' });
     }
 };
 
-// update a Merchant
+// Update a Merchant
 export const updateMerchant = async (req: Request, res: Response) => {
     const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id } });
+        const merchant = await merchantHandler.getMerchant(id);
         if (!merchant) {
             res.status(404).json({ error: 'Merchant not found' });
         } else {
             merchant.baseToken = req.body.baseToken;
             merchant.metadata = req.body.metadata;
             merchant.walletAddress = req.body.walletAddress;
-            await merchantRepository.save(merchant);
-            res.json(merchant);
+            const updatedMerchant = await merchantHandler.updateMerchant(merchant);
+            res.json(updatedMerchant);
         }
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to update merchant' });
     }
 };
 
-
-// delete a Merchant
+// Delete a Merchant
 export const deleteMerchant = async (req: Request, res: Response) => {
     const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id } });
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            await merchantRepository.remove(merchant);
-            res.json({ id: id });
-        }
+        await merchantHandler.deleteMerchant(id);
+        res.json({ id: id });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to delete merchant' });
     }
 };
 
-// get all offerings of a Merchant
+// Get all offerings of a Merchant
 export const getMerchantOfferings = async (req: Request, res: Response) => {
-    const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id }, relations: ['offerings'] });
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            res.json(merchant.offerings);
-        }
+        const offerings = await merchantHandler.getMerchantOfferings(req.params.id);
+        res.json(offerings);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchant offerings' });
     }
 };
 
-// get all invoices of a Merchant
+// Get all invoices of a Merchant
 export const getMerchantInvoices = async (req: Request, res: Response) => {
-    const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id }, relations: ['offerings', 'offerings.invoices'] });
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            res.json(merchant.offerings.map(offering => offering.invoices));
-        }
+        const invoices = await merchantHandler.getMerchantInvoices(req.params.id);
+        res.json(invoices);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchant invoices' });
     }
 };
 
-// get all customers of a Merchant
+// Get all customers of a Merchant
 export const getMerchantCustomers = async (req: Request, res: Response) => {
-    const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id }, relations: ['offerings', 'offerings.invoices', 'offerings.invoices.customer'] });
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            res.json(merchant.offerings.map(offering => offering.invoices.map(invoice => invoice.customer)));
-        }
+        const customers = await merchantHandler.getMerchantCustomers(req.params.id);
+        res.json(customers);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchant customers' });
     }
 };
 
-// get all payments of a Merchant
+// Get all payments of a Merchant
 export const getMerchantPayments = async (req: Request, res: Response) => {
-    const id = req.params.id;
     try {
-        const merchant = await merchantRepository.findOne({ where: { id: id }, relations: ['offerings', 'offerings.invoices', 'offerings.invoices.payment'] });
-        if (!merchant) {
-            res.status(404).json({ error: 'Merchant not found' });
-        } else {
-            res.json(merchant.offerings.map(offering => offering.invoices.map(invoice => invoice.payment)));
-        }
+        const payments = await merchantHandler.getMerchantPayments(req.params.id);
+        res.json(payments);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to get merchant payments' });
     }
 };
-

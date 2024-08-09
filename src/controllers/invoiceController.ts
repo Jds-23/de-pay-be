@@ -1,46 +1,24 @@
 // src/controllers/invoiceController.ts
-import { custom, z } from 'zod';
-import { MetadataSchema } from '../type/profile';  // Assuming you have this defined for Metadata
-import { TokenSchema } from '../type/token';       // Assuming you have this defined for Token
 import { Request, Response } from 'express';
+import { InvoiceHandler } from '../handlers/invoiceHandler';
+import { z } from 'zod';
 import { AppDataSource } from '../data-source';
 import { Invoice } from '../entity/Invoice';
+import { Payment } from '../entity/Payment';
+import { Customer } from '../entity/Customer';
 import { Offering } from '../entity/Offering';
-import { Merchant } from '../entity/Merchant';
 
-const createOfferingSchema = z.object({
-    merchantId: z.string(),
-    metadata: MetadataSchema,
-    price: z.string().transform((val) => BigInt(val)),
-    customToken: TokenSchema,
-    stock: z.number(),
-    isUnlimited: z.boolean(),
-    isLive: z.boolean(),
-});
-// Define the Zod schema for Customer
-const CustomerSchema = z.object({
-    id: z.string(),
-    walletAddress: z.string(),
-    metadata: MetadataSchema,
-    email: z.string().email(),
-});
+const invoiceHandler = new InvoiceHandler();
+
 // Define the Zod schema for Invoice creation
 const createInvoiceSchema = z.object({
-    merchantId: z.string(),
-    offeringId: z.number().optional(),
-    createOfferingsParams: createOfferingSchema.optional(),
-    customer: CustomerSchema,
+    offeringId: z.number(),
+    customerId: z.string().optional().nullable(),
     date: z.string().refine((val) => !isNaN(Date.parse(val)), {
         message: "Invalid date format",
     }),
     paid: z.boolean(),
 });
-
-
-const invoiceRepository = AppDataSource.getRepository(Invoice);
-const offeringRepository = AppDataSource.getRepository(Offering);
-const merchantRepository = AppDataSource.getRepository(Merchant);
-
 
 // Create an Invoice
 export const createInvoice = async (req: Request, res: Response) => {
@@ -50,18 +28,30 @@ export const createInvoice = async (req: Request, res: Response) => {
             return res.status(400).json({ error: parseResult.error.errors });
         }
 
-        const { offeringId } = parseResult.data;
+        const { offeringId, customerId, date, paid } = parseResult.data;
 
-        // Check if the offering exists
-        const offering = await offeringRepository.findOne({ where: { id: offeringId } });
+        const offering = await AppDataSource.getRepository(Offering).findOne({ where: { id: offeringId } });
         if (!offering) {
             return res.status(404).json({ error: 'Offering not found' });
         }
 
+        let customer: Customer | null = null;
+        if (customerId) {
+            customer = await AppDataSource.getRepository(Customer).findOne({ where: { id: customerId } });
+            if (!customer) {
+                return res.status(404).json({ error: 'Customer not found' });
+            }
+        }
+
+
+
         const invoice = new Invoice();
         invoice.offering = offering;
+        invoice.customer = customer;
+        invoice.date = new Date(date);
+        invoice.paid = paid;
 
-        const result = await invoiceRepository.save(invoice);
+        const result = await invoiceHandler.addInvoice(invoice);
         res.status(201).json({ id: result.id });
     } catch (error) {
         console.error(error);
@@ -70,10 +60,10 @@ export const createInvoice = async (req: Request, res: Response) => {
 };
 
 // Get an Invoice by ID
-export const getInvoice = async (req: Request, res: Response) => {
-    const id = req.params.id;
+export const getInvoiceById = async (req: Request, res: Response) => {
     try {
-        const invoice = await invoiceRepository.findOne({ where: { id: parseInt(id) }, relations: ['offering'] });
+        const invoiceId = parseInt(req.params.id, 10);
+        const invoice = await invoiceHandler.getInvoice(invoiceId);
         if (!invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
         }
@@ -85,9 +75,9 @@ export const getInvoice = async (req: Request, res: Response) => {
 };
 
 // Get all Invoices
-export const getInvoices = async (req: Request, res: Response) => {
+export const getAllInvoices = async (req: Request, res: Response) => {
     try {
-        const invoices = await invoiceRepository.find({ relations: ['offering'] });
+        const invoices = await invoiceHandler.getAllInvoices();
         res.json(invoices);
     } catch (error) {
         console.error(error);
@@ -95,46 +85,26 @@ export const getInvoices = async (req: Request, res: Response) => {
     }
 };
 
-// // Update an Invoice
-// export const updateInvoice = async (req: Request, res: Response) => {
-//     const id = req.params.id;
-//     try {
-//         const parseResult = updateInvoiceSchema.safeParse(req.body);
-//         if (!parseResult.success) {
-//             return res.status(400).json({ error: parseResult.error.errors });
-//         }
-
-//         const invoice = await invoiceRepository.findOne({ where: { id: parseInt(id) }, relations: ['offering'] });
-//         if (!invoice) {
-//             return res.status(404).json({ error: 'Invoice not found' });
-//         }
-
-//         const { customer, payment } = parseResult.data;
-
-
-//         if (customer) invoice.customer = { ...invoice.customer, ...customer };
-//         if (payment) invoice.payment = { ...invoice.payment, ...payment };
-
-//         await invoiceRepository.save(invoice);
-//         res.json(invoice);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ error: 'Failed to update invoice' });
-//     }
-// };
-
-// Delete an Invoice
-export const deleteInvoice = async (req: Request, res: Response) => {
-    const id = req.params.id;
+// Get Invoices by Customer ID
+export const getInvoicesByCustomer = async (req: Request, res: Response) => {
     try {
-        const invoice = await invoiceRepository.findOne({ where: { id: parseInt(id) } });
-        if (!invoice) {
-            return res.status(404).json({ error: 'Invoice not found' });
-        }
-        await invoiceRepository.remove(invoice);
-        res.json({ id: id });
+        const customerId = req.params.customerId;
+        const invoices = await invoiceHandler.getInvoicesByCustomer(customerId);
+        res.json(invoices);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to delete invoice' });
+        res.status(500).json({ error: 'Failed to get invoices by customer' });
+    }
+};
+
+// Get Invoices by Offering ID
+export const getInvoicesByOffering = async (req: Request, res: Response) => {
+    try {
+        const offeringId = parseInt(req.params.offeringId, 10);
+        const invoices = await invoiceHandler.getInvoicesByOffering(offeringId);
+        res.json(invoices);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to get invoices by offering' });
     }
 };

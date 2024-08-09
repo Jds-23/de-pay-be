@@ -1,5 +1,5 @@
 // src/entity/Merchant.ts
-import { Entity, PrimaryColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryColumn, Column, OneToMany, Repository } from 'typeorm';
 import { Offering } from './Offering';
 import { Token } from '../type/token';
 import { Metadata } from '../type/profile';
@@ -21,4 +21,3 @@ export class Merchant {
     @OneToMany(type => Offering, offering => offering.merchant)
     offerings!: Offering[];
 }
-

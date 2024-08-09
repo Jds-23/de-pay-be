@@ -1,14 +1,15 @@
 // src/controllers/offeringController.ts
 import { Request, Response } from 'express';
-import { AppDataSource } from '../data-source';
-import { Offering } from '../entity/Offering';
-import { Merchant } from '../entity/Merchant';
+import { OfferingHandler } from '../handlers/offeringHandler'; // Import OfferingHandler
 import { z } from 'zod';
 import { MetadataSchema } from '../type/profile';
 import { TokenSchema } from '../type/token';
+import { Offering } from '../entity/Offering';
+import { MerchantHandler } from '../handlers/MerchantHandler';
 
-const offeringRepository = AppDataSource.getRepository(Offering);
-const merchantRepository = AppDataSource.getRepository(Merchant);
+const offeringHandler = new OfferingHandler(); // Initialize OfferingHandler
+const merchantHandler = new MerchantHandler();
+
 const createOfferingSchema = z.object({
     merchantId: z.string(),
     metadata: MetadataSchema,
@@ -18,6 +19,7 @@ const createOfferingSchema = z.object({
     isUnlimited: z.boolean(),
     isLive: z.boolean(),
 });
+
 // Creates an Offering
 export const createOffering = async (req: Request, res: Response) => {
     try {
@@ -29,7 +31,8 @@ export const createOffering = async (req: Request, res: Response) => {
         const { merchantId, metadata, price, customToken, stock, isUnlimited, isLive } = parseResult.data;
 
         // Check if the merchant exists
-        const merchant = await merchantRepository.findOne({ where: { id: merchantId } });
+        // const merchant = await offeringHandler.repo.manager.findOne('Merchant', { where: { id: merchantId } });
+        const merchant = await merchantHandler.getMerchant(merchantId);
         if (!merchant) {
             return res.status(404).json({ error: 'Merchant not found' });
         }
@@ -43,38 +46,22 @@ export const createOffering = async (req: Request, res: Response) => {
         offering.isLive = isLive;
         offering.merchant = merchant;
 
-        const result = await offeringRepository.save(offering);
+        const result = await offeringHandler.addOffering(offering);
         res.status(201).json({ id: result.id });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to create offering' });
     }
 };
-// Retrieves Offerings by Merchant ID
-export const getOfferingsByMerchant = async (req: Request, res: Response) => {
-    try {
-        const merchantId = req.params.merchantId;
 
-        const merchant = await merchantRepository.findOne({ where: { id: merchantId }, relations: ['offerings'] });
-        if (!merchant) {
-            return res.status(404).json({ error: 'Merchant not found' });
-        }
-        res.json(merchant.offerings);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to get offerings' });
-    }
-};
 // Retrieves a single Offering by ID
 export const getOfferingById = async (req: Request, res: Response) => {
     try {
-        const offeringId = req.params.id;
-
-        const offering = await offeringRepository.findOne({ where: { id: parseInt(offeringId) } });
+        const offeringId = parseInt(req.params.id, 10);
+        const offering = await offeringHandler.getOffering(offeringId);
         if (!offering) {
             return res.status(404).json({ error: 'Offering not found' });
         }
-
         res.json(offering);
     } catch (error) {
         console.error(error);
