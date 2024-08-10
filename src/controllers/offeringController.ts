@@ -11,7 +11,6 @@ export const createOffering = async (req: Request, res: Response) => {
         if (!parseResult.success) {
             return res.status(400).json({ error: parseResult.error.errors });
         }
-
         const offering = await offeringHandler.createOffering(parseResult.data);
         res.status(201).json({ id: offering.id });
     } catch (error: any) {

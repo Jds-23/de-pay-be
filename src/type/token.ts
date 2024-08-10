@@ -6,7 +6,7 @@ export const TokenSchema = z.object({
     address: z.string(),
     chainId: z.string(), // Changed to string
     decimals: z.number(),
-    receiverWallet: z.string(),
+    receiverWallet: z.string().optional(),
 });
 
 // Derive the TypeScript type from the schema

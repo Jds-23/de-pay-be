@@ -35,13 +35,13 @@ export class OfferingHandler {
 
                 const offering = new Offering();
                 offering.metadata = createOfferingParams.metadata;
-                offering.price = BigInt(createOfferingParams.price);
+                offering.price = createOfferingParams.price;
                 offering.customToken = createOfferingParams.customToken ?? merchant.baseToken;
                 offering.stock = createOfferingParams.stock;
                 offering.isUnlimited = createOfferingParams.isUnlimited;
                 offering.isLive = true;
                 offering.merchant = merchant;
-
+                debugger
                 return await this.repo.save(offering);
             } else {
                 throw new Error(`Offering with ID ${createOfferingParams.id} already exists.`);

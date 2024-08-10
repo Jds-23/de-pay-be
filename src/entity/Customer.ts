@@ -7,7 +7,7 @@ export class Customer {
     @PrimaryColumn("text")
     id!: string;
 
-    @Column("json")
+    @Column("json", { nullable: true })
     metadata!: Metadata | null;
 
     @OneToMany(type => Invoice, invoice => invoice.customer)

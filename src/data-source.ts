@@ -8,7 +8,7 @@ import { Customer } from './entity/Customer';
 
 export const AppDataSource = new DataSource({
     type: 'sqlite',
-    database: process.env.DB_URL || 'database.sqlite',
+    database: process.env.DB_URL || 'db.sqlite',
     entities: [Merchant, Offering, Invoice, Customer, Payment],
     synchronize: true,
     logging: false,

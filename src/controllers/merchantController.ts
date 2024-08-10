@@ -3,10 +3,20 @@ import { Request, Response } from 'express';
 import { MerchantHandler } from '../handlers/merchant/handler';
 import { createMerchantSchema } from '../handlers/merchant/schema';
 import { CustomerHandler } from '../handlers/customer/handler';
+import { createSiweMessage, generateSiweNonce } from 'viem/siwe';
+import auth from '../utils/auth';
 
 const merchantHandler = new MerchantHandler();
 const customerHandler = new CustomerHandler();
 
+export const getMerchantRegisterNonce = async (req: Request, res: Response) => {
+    try {
+        const nonce = generateSiweNonce();
+        res.json({ nonce });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to generate nonce' });
+    }
+}
 // Creates a Merchant
 export const createMerchant = async (req: Request, res: Response) => {
     try {
@@ -14,8 +24,9 @@ export const createMerchant = async (req: Request, res: Response) => {
         if (!parseResult.success) {
             return res.status(400).json({ error: parseResult.error.errors });
         }
+        // auth(req, req.body.walletAddress);
         await merchantHandler.createMerchant(parseResult.data);
-        await customerHandler.createCustomer({ id: parseResult.data.id, walletAddress: parseResult.data.walletAddress });
+        await customerHandler.createCustomer({ id: parseResult.data.walletAddress, walletAddress: parseResult.data.walletAddress, metadata: parseResult.data.metadata });
         res.status(201).json({ insertedId: parseResult.data.id });
     } catch (error: any) {
         console.error(error);

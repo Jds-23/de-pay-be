@@ -11,9 +11,9 @@ import { mock } from 'jest-mock-extended';
 import { CreateInvoiceType } from './schema';
 import { Merchant } from '../../entity/Merchant';
 
-jest.mock('../offering/handler');
-jest.mock('../merchant/handler');
+jest.mock('../merchant/handler'); 3
 jest.mock('../customer/handler');
+jest.mock('../offering/handler');
 
 describe('InvoiceHandler - createInvoice and getInvoice', () => {
     let mockRepo: jest.Mocked<Repository<Invoice>>;

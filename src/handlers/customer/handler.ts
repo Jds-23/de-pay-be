@@ -24,10 +24,10 @@ export class CustomerHandler {
     // Create a new Customer
     async createCustomer(createCustomerParams: CreateCustomerType) {
         try {
-            const existing = await this.repo.findOne({ where: { id: createCustomerParams.id } });
+            const existing = await this.repo.findOne({ where: { id: createCustomerParams.walletAddress } });
             if (!existing) {
                 const customer = new Customer();
-                customer.id = createCustomerParams.id;
+                customer.id = createCustomerParams.walletAddress;
                 customer.metadata = createCustomerParams.metadata || null;
                 customer.walletAddress = createCustomerParams.walletAddress;
                 customer.email = createCustomerParams.email || null;
@@ -35,7 +35,7 @@ export class CustomerHandler {
 
                 return await this.repo.save(customer);
             } else {
-                throw new Error(`Customer with ID ${createCustomerParams.id} already exists.`);
+                throw new Error(`Customer with ID ${createCustomerParams.walletAddress} already exists.`);
             }
         } catch (error: any) {
             console.error("Error while creating Customer:", error);

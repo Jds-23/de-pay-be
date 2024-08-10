@@ -4,7 +4,6 @@ import { MetadataSchema } from "../../type/profile";
 
 // Define the Zod schema for Customer creation
 const createCustomerSchema = z.object({
-    id: z.string(),
     walletAddress: z.string(),
     email: z.string().optional(),
     baseToken: TokenSchema.optional(),

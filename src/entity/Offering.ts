@@ -12,8 +12,8 @@ export class Offering {
     @Column("json")
     metadata!: Metadata;
 
-    @Column("bigint")
-    price!: bigint;
+    @Column("text")
+    price!: string;
 
     @Column("json")
     customToken!: Token;
