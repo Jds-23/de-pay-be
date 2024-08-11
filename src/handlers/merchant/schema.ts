@@ -4,7 +4,6 @@ import { MetadataSchema } from "../../type/profile";
 
 // Define the Zod schema for Merchant creation
 const createMerchantSchema = z.object({
-    id: z.string(),
     walletAddress: z.string(),
     baseToken: TokenSchema,
     metadata: MetadataSchema,

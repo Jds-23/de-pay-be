@@ -11,6 +11,8 @@ const createInvoiceSchema = z.object({
     offering: createOfferingSchema.optional(),
     customerId: z.string().optional(),
     customer: createCustomerSchema.optional(),
+    txnHash: z.string().optional(),
+    paidAsset: TokenSchema.optional(),
     date: z.string(),
 });
 

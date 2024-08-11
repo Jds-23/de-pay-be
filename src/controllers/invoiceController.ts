@@ -2,9 +2,30 @@
 import { Request, Response } from 'express';
 import { InvoiceHandler } from '../handlers/invoice/handler';
 import { createInvoiceSchema } from '../handlers/invoice/schema';
+import { PaymentHandler } from '../handlers/payment/handler';
 
 const invoiceHandler = new InvoiceHandler();
+const paymentHandler = new PaymentHandler();
 
+// Creates a new Invoice
+export const createInvoiceWithPayment = async (req: Request, res: Response) => {
+    try {
+        const parseResult = createInvoiceSchema.safeParse(req.body);
+        if (!parseResult.success) {
+            return res.status(400).json({ error: parseResult.error.errors });
+        }
+
+        const invoice = await invoiceHandler.createInvoice(parseResult.data);
+        const payment = await paymentHandler.createPayment({ invoiceId: invoice.id });
+        if (parseResult.data.txnHash && parseResult.data.paidAsset) {
+            await paymentHandler.updatePaymentTxnhash(payment.id, parseResult.data.txnHash, parseResult.data.paidAsset);
+        }
+        res.status(201).json({ id: invoice.id });
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ error: error?.message || 'Failed to create invoice' });
+    }
+};
 // Creates a new Invoice
 export const createInvoice = async (req: Request, res: Response) => {
     try {
@@ -14,6 +35,10 @@ export const createInvoice = async (req: Request, res: Response) => {
         }
 
         const invoice = await invoiceHandler.createInvoice(parseResult.data);
+        // const payment = await paymentHandler.createPayment({ invoiceId: invoice.id });
+        // if (parseResult.data.txnHash && parseResult.data.paidAsset) {
+        //     await paymentHandler.updatePaymentTxnhash(payment.id, parseResult.data.txnHash, parseResult.data.paidAsset);
+        // }
         res.status(201).json({ id: invoice.id });
     } catch (error: any) {
         console.error(error);

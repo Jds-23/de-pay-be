@@ -9,11 +9,11 @@ export class Payment {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
 
-    @Column("text")
-    txnHash!: string;
+    @Column("text", { nullable: true })
+    txnHash!: string | null;
 
-    @Column("json")
-    paidAsset!: Token;
+    @Column("json", { nullable: true })
+    paidAsset!: Token | null;
 
     @OneToOne(() => Invoice, invoice => invoice.payment)
     invoice!: Invoice;

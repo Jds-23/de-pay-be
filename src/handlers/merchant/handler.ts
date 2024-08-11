@@ -25,17 +25,17 @@ export class MerchantHandler {
 
     async createMerchant(createMerchantParams: CreateMerchantType) {
         try {
-            const existing = await this.repo.findOne({ where: { id: createMerchantParams.id } });
+            const existing = await this.repo.findOne({ where: { id: createMerchantParams.walletAddress } });
             if (!existing) {
                 const merchant = new Merchant();
-                merchant.id = createMerchantParams.id;
+                merchant.id = createMerchantParams.walletAddress;
                 merchant.baseToken = createMerchantParams.baseToken;
                 merchant.metadata = createMerchantParams.metadata;
                 merchant.walletAddress = createMerchantParams.walletAddress;
                 merchant.offerings = [];
                 return await this.repo.save(merchant);
             } else {
-                throw new Error(`Merchant with ID ${createMerchantParams.id} already exists.`);
+                throw new Error(`Merchant with ID ${createMerchantParams.walletAddress} already exists.`);
             }
         } catch (error: any) {
             throw new Error(error?.message || 'Failed to create merchant');
