@@ -53,6 +53,7 @@ async function processEntries() {
                 };
                 salt: `0x${string}`;
                 sourceAmount: string;
+                chainId: number;
             };
             const createdAt = entry.createdAt as Date;
             console.log(entry.createdAt);
@@ -63,13 +64,14 @@ async function processEntries() {
 
             const salt = depositMeta.salt;
             const genericData = depositMeta.genericData;
+            const chainId = depositMeta.chainId;
             // const sourceAmount = depositMeta.sourceAmount;
 
             // Check the token balance
             const da = new DAProvider();
             // const balance = await tokenContract.balanceOf(depositMeta.depositAddress);
             const balance = await da.getTokenBalance(
-                137,
+                chainId,
                 genericData.srcToken,
                 depositMeta.depositAddress
             );
@@ -84,13 +86,13 @@ async function processEntries() {
                     // 	{ from: wallet.address }
                     // );
                     // If simulation succeeds, send the real transaction
-                    const realTx = await da.sendTokenDeposit(137, salt, genericData);
+                    const realTx = await da.sendTokenDeposit(chainId, salt, genericData);
                     // Update the database entry with the transaction hash
                     await collection.updateOne(
                         { _id: entry._id },
                         { $set: { relayTxn: realTx, status: Status.DISPATCHED } }
                     );
-                    da.waitForTransactionReceipt(137, realTx, 1, collection);
+                    da.waitForTransactionReceipt(chainId, realTx, 1, collection);
 
                     console.log(
                         "Transaction successful with hash:",

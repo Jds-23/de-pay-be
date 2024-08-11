@@ -1,9 +1,57 @@
-import { createPublicClient, createWalletClient, encodeFunctionData, http, parseAbi, PrivateKeyAccount, PublicClient, WalletClient } from "viem";
+import { createPublicClient, createWalletClient, defineChain, encodeFunctionData, http, parseAbi, PrivateKeyAccount, PublicClient, WalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base, mode, optimism, polygon } from 'viem/chains'
 import "dotenv/config";
 import { Collection, Document } from "mongodb";
 import { Status } from "../../relayer/evm";
+
+export const optimismPublic = defineChain({
+    id: 8453,
+    name: 'Base',
+    nativeCurrency: {
+        decimals: 18,
+        name: 'Ether',
+        symbol: 'ETH',
+    },
+    rpcUrls: {
+        default: {
+            http: ['https://optimism.blockpi.network/v1/rpc/883181e1db6ac6999c8a70612e5186aea743e7a9'],
+        },
+    },
+    blockExplorers: {
+        default: { name: 'Explorer', url: 'https://optimism.blockscout.com/api/' },
+    },
+    contracts: {
+        multicall3: {
+            address: '0xca11bde05977b3631167028862be2a173976ca11',
+            blockCreated: 4286263,
+        },
+    },
+})
+export const basePublic = defineChain({
+    id: 8453,
+    name: 'Base',
+    nativeCurrency: {
+        decimals: 18,
+        name: 'Ether',
+        symbol: 'ETH',
+    },
+    rpcUrls: {
+        default: {
+            http: ['https://base.blockpi.network/v1/rpc/13ececf1a450e566d5372a2db08d62782b88b52e'],
+        },
+    },
+    blockExplorers: {
+        default: { name: 'Explorer', url: 'https://base.blockscout.com/api/' },
+    },
+    contracts: {
+        multicall3: {
+            address: '0xca11bde05977b3631167028862be2a173976ca11',
+            blockCreated: 5022,
+        },
+    },
+})
+
 
 export default class DAProvider {
     private evmproviderz: { [key: string]: PublicClient } = {};
@@ -13,8 +61,15 @@ export default class DAProvider {
         "10": "0xe40Ad0ba24f0861995dCFcBb5C2192Fc92dfF85C",
         "8453": "0x7d25814114274F2A22d8bE43F575964890F0c8a9",
         "34443": "0x5C96CD07f3034670f297d567CD1517665F31c58F",
+        "137": "0x26054DeB0968d40F2488f6822d390317047cef18"
     }
-    private CONTRACT_ADDRESS = '0x26054DeB0968d40F2488f6822d390317047cef18' as `0x${string}`;
+    private chainIdToChain: { [key: string]: any } = {
+        "10": optimismPublic,
+        "8453": basePublic,
+        "34443": mode,
+        "137": polygon
+    }
+    // private CONTRACT_ADDRESS = '0x26054DeB0968d40F2488f6822d390317047cef18' as `0x${string}`;
     private PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
     constructor() {
         this.evmproviderz = {
@@ -23,12 +78,13 @@ export default class DAProvider {
                 transport: http(),
             }),
             10: createPublicClient({
-                chain: optimism,
+                chain: optimismPublic,
                 transport: http(),
             }),
             8453: createPublicClient({
-                chain: base,
+                chain: basePublic,
                 transport: http(),
+
             }),
             34443: createPublicClient({
                 chain: mode,
@@ -41,11 +97,11 @@ export default class DAProvider {
                 transport: http(),
             }),
             10: createWalletClient({
-                chain: optimism,
+                chain: optimismPublic,
                 transport: http(),
             }),
             8453: createWalletClient({
-                chain: base,
+                chain: basePublic,
                 transport: http(),
             }),
             34443: createWalletClient({
@@ -60,7 +116,7 @@ export default class DAProvider {
         try {
             const client = this.evmproviderz[chainId];
             const nonce = await client.getTransactionCount({
-                address: this.CONTRACT_ADDRESS,
+                address: this.addresses[chainId],
                 blockTag: 'latest',
             });
             return nonce;
@@ -88,7 +144,7 @@ export default class DAProvider {
         // const data = await client.getDA('0x1396f41d89b96eaf29a7ef9ee01ad36e452235ae');
 
         const data = await client.readContract({
-            address: this.CONTRACT_ADDRESS,
+            address: this.addresses[chainId],
             abi: abi,
             functionName: 'addressForTokenDeposit',
             args: [
@@ -175,7 +231,7 @@ export default class DAProvider {
             const provider = this.evmproviderz[chainId];
             const gas = await provider.estimateGas({
                 account: this.account,
-                to: this.CONTRACT_ADDRESS,
+                to: this.addresses[chainId],
                 data: calldatadata,
                 // abi: abi,
                 // functionName: 'sendTokenDeposit',
@@ -190,9 +246,9 @@ export default class DAProvider {
 
             const txnHash = await client.sendTransaction({
                 account: this.account,
-                to: this.CONTRACT_ADDRESS,
+                to: this.addresses[chainId],
                 data: calldatadata,
-                chain: polygon,
+                chain: this.chainIdToChain[chainId],
                 gas: gas * BigInt(3000000) / BigInt(1000000)
             });
 
